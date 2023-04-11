@@ -1,37 +1,30 @@
 import logging
 import requests
+import openai
 import azure.functions as func
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
+    openai.api_type = "azure"
+    openai.api_base = "https://uta-ops-openai.openai.azure.com/"
+    openai.api_version = "2022-12-01"
+    openai.api_key = "c9e35888d9c2461794cc499b81c58e1f"
+
+    prompt = req.params.get('prompt')
+
+    response = openai.Completion.create(
+        engine="ops-ai-deployment",
+        prompt=textprompt,
+        temperature=.3,
+        max_tokens=2000,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+        best_of=3,
+        stop=None)
+
     
-    base_url = "https://api.openpath.com/orgs/"
-    orgid = "2583"
-    url = base_url + '{}/users'.format(orgid)
-    userprincipalname = req.params.get('upn')
-    status = req.params.get('status')
-    ##Use Payload status of "S" to suspend the user and payload status of "A" to mark a user as active.
-    payload = {"status": status}
-    querystring = {"offset":"0","sort":"identity.lastName","order":"asc"}
-    headers = {
-        "Accept": "application/json",
-        "Authorization": "Basic Y29ubm9yYithcGlAZGl2ZXJnZWl0LmNvbTpWc1VpYzh0TGgxZ0ZEY1hwTmRWb1kwS1NFbGVKOGQ=",
-        'Content-Type': 'application/json'
-    }
-    response = requests.request("GET", url, headers=headers, params=querystring)
-    data = response.json()
-    users = data['data']
-    for user in users:
-        useridentity = user['identity']
-        userid = user['id']
-        useremail = useridentity['email']
-        if (useremail == userprincipalname.lower()):
-            #print(useremail)
-            print(useremail)
-            print(userid)
-            statusurl = "https://api.openpath.com/orgs/{}/users/{}/status".format(orgid,userid)
-            userstatus = requests.request("PUT", statusurl, json=payload, headers=headers)
-            return func.HttpResponse(status_code=200)
+    return func.HttpResponse(response["choices"][0]["text"])
     return func.HttpResponse(status_code=400)
